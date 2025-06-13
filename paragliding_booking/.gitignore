@@ -1,0 +1,21 @@
+# Ignore configuration files with sensitive data
+config/config.php
+config.php
+
+# Ignore vendor directory if using Composer
+vendor/
+composer.lock
+
+# Ignore IDE/editor specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Log files
+*.log
+email_log.txt
+
+# OS generated files
+.DS_Store
+Thumbs.db
