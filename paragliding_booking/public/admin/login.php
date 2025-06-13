@@ -1,60 +1,54 @@
 <?php
-define('PAGE_TITLE', 'Admin/Pilot Login');
-require_once '../../config/config.php'; // Adjusted path
+define('PAGE_TITLE_KEY', 'page_title_admin_login');
+require_once '../../config/config.php';
 require_once APP_ROOT . '/src/utils.php';
 
-// If already logged in, redirect to dashboard
 if (is_logged_in()) {
     redirect(BASE_URL . '/admin/dashboard.php');
 }
 
-require_once APP_ROOT . '/templates/layouts/header.php'; // Standard header
+require_once APP_ROOT . '/templates/layouts/header.php';
 
-$form_errors = $_SESSION['form_errors'] ?? [];
-$form_data = $_SESSION['form_data'] ?? []; // For repopulating email
+$form_errors = $_SESSION['form_errors'] ?? []; // Keys for errors
+$form_data = $_SESSION['form_data'] ?? [];
 unset($_SESSION['form_errors'], $_SESSION['form_data']);
 ?>
 
 <div class="row justify-content-center mt-5">
     <div class="col-md-6 col-lg-4">
-        <h2 class="text-center mb-4"><?php echo PAGE_TITLE; ?></h2>
+        <h2 class="text-center mb-4"><?php echo escape_html(__(PAGE_TITLE_KEY)); ?></h2>
 
         <?php
         if (isset($_SESSION['user_message']) && !empty($_SESSION['user_message'])) {
+            $message_key = $_SESSION['user_message'];
+            $message_params = $_SESSION['user_message_params'] ?? [];
             $message_type = $_SESSION['message_type'] ?? 'danger';
-            echo '<div class="alert alert-' . htmlspecialchars($message_type) . '">' . htmlspecialchars($_SESSION['user_message']) . '</div>';
-            unset($_SESSION['user_message']);
-            unset($_SESSION['message_type']);
+            echo '<div class="alert alert-' . htmlspecialchars($message_type) . '">' . escape_html(__($message_key, $message_params, $message_key)) . '</div>';
+            unset($_SESSION['user_message'], $_SESSION['message_type'], $_SESSION['user_message_params']);
         }
         ?>
         <?php if (!empty($form_errors['credentials'])): ?>
-            <div class="alert alert-danger"><?php echo escape_html(implode(', ', $form_errors['credentials'])); ?></div>
+            <div class="alert alert-danger"><?php echo escape_html(__(implode(', ', $form_errors['credentials']))); ?></div>
         <?php endif; ?>
-
 
         <form action="<?php echo htmlspecialchars(BASE_URL); ?>/admin/authenticate.php" method="POST">
             <div class="form-group">
-                <label for="email">Email address</label>
+                <label for="email"><?php echo escape_html(__('login_label_email')); ?></label>
                 <input type="email" class="form-control <?php echo isset($form_errors['email']) ? 'is-invalid' : ''; ?>" id="email" name="email" value="<?php echo escape_html(old('email', $form_data)); ?>" required autofocus>
                 <?php if (isset($form_errors['email'])): ?>
-                    <div class="invalid-feedback"><?php echo escape_html(implode(', ', $form_errors['email'])); ?></div>
+                    <div class="invalid-feedback"><?php foreach($form_errors['email'] as $err_key) { echo escape_html(__($err_key)) . '<br>'; } ?></div>
                 <?php endif; ?>
             </div>
             <div class="form-group">
-                <label for="password">Password</label>
+                <label for="password"><?php echo escape_html(__('login_label_password')); ?></label>
                 <input type="password" class="form-control <?php echo isset($form_errors['password']) ? 'is-invalid' : ''; ?>" id="password" name="password" required>
                  <?php if (isset($form_errors['password'])): ?>
-                    <div class="invalid-feedback"><?php echo escape_html(implode(', ', $form_errors['password'])); ?></div>
+                    <div class="invalid-feedback"><?php foreach($form_errors['password'] as $err_key) { echo escape_html(__($err_key)) . '<br>'; } ?></div>
                 <?php endif; ?>
             </div>
             <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-            <button type="submit" class="btn btn-primary btn-block">Login</button>
+            <button type="submit" class="btn btn-primary btn-block"><?php echo escape_html(__('login_button_submit')); ?></button>
         </form>
     </div>
 </div>
-
-<?php
-// No standard footer here for a cleaner login page, or a simplified one
-// For consistency, let's use the standard one for now
-require_once APP_ROOT . '/templates/layouts/footer.php';
-?>
+<?php require_once APP_ROOT . '/templates/layouts/footer.php'; ?>

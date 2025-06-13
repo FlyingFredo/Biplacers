@@ -1,123 +1,102 @@
 <?php
-require_once '../config/config.php'; // Defines APP_ROOT, BASE_URL, etc.
+require_once '../config/config.php';
 require_once APP_ROOT . '/src/utils.php';
 require_once APP_ROOT . '/src/Database.php';
-require_once APP_ROOT . '/src/Email.php';
+require_once APP_ROOT . '/src/Email.php'; // For send_application_email
 
-// Start session if not already started (config should do this, but ensure)
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
+if (session_status() == PHP_SESSION_NONE) { session_start(); }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    // Redirect to form if not a POST request
-    $_SESSION['user_message'] = 'Invalid request method.';
+    $_SESSION['user_message'] = 'submit_request_invalid_method'; // Key
     $_SESSION['message_type'] = 'danger';
     redirect(BASE_URL . '/request_flight.php');
 }
 
-// CSRF Token Validation
 if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
-    $_SESSION['user_message'] = 'Invalid security token. Please try again.';
+    $_SESSION['user_message'] = 'submit_request_csrf_invalid'; // Key
     $_SESSION['message_type'] = 'danger';
     redirect(BASE_URL . '/request_flight.php');
 }
 
-$errors = [];
+$errors = []; // Will store translation keys
 $input = [];
 
 // Sanitize and Validate input
-// First Name
 $input['first_name'] = trim($_POST['first_name'] ?? '');
 if (empty($input['first_name'])) {
-    $errors['first_name'][] = 'First name is required.';
+    $errors['first_name'][] = 'val_err_first_name_required';
 } elseif (strlen($input['first_name']) > 100) {
-    $errors['first_name'][] = 'First name cannot exceed 100 characters.';
+    $errors['first_name'][] = 'val_err_first_name_maxlength';
 }
 
-// Last Name
 $input['last_name'] = trim($_POST['last_name'] ?? '');
 if (empty($input['last_name'])) {
-    $errors['last_name'][] = 'Last name is required.';
+    $errors['last_name'][] = 'val_err_last_name_required';
 } elseif (strlen($input['last_name']) > 100) {
-    $errors['last_name'][] = 'Last name cannot exceed 100 characters.';
+    $errors['last_name'][] = 'val_err_last_name_maxlength';
 }
 
-// Age
-$input['age'] = filter_input(INPUT_POST, 'age', FILTER_VALIDATE_INT, ["options" => ["min_range" => 1, "max_range" => 120]]);
-if ($input['age'] === false || is_null($input['age'])) { // filter_input returns false on failure, null if not set
-    $errors['age'][] = 'Age is required and must be a valid number (1-120).';
+$input['age'] = filter_input(INPUT_POST, 'age', FILTER_VALIDATE_INT);
+if ($input['age'] === false || is_null($input['age']) || $input['age'] < 1 || $input['age'] > 120) {
+    $errors['age'][] = 'val_err_age_required_range';
 }
 
-// Weight
 $input['weight'] = filter_input(INPUT_POST, 'weight', FILTER_VALIDATE_FLOAT, ["options" => ["decimal" => "."]]);
 if ($input['weight'] === false || is_null($input['weight'])) {
-    $errors['weight'][] = 'Weight is required.';
-} elseif ($input['weight'] < 20 || $input['weight'] > 200) { // Assuming kg
-    $errors['weight'][] = 'Weight must be between 20kg and 200kg.';
+    $errors['weight'][] = 'val_err_weight_required';
+} elseif ($input['weight'] < 20 || $input['weight'] > 200) {
+    $errors['weight'][] = 'val_err_weight_range';
 } else {
-    $input['weight'] = round($input['weight'], 2); // Ensure two decimal places
+    $input['weight'] = round($input['weight'], 2);
 }
 
-// Phone
 $input['phone'] = trim($_POST['phone'] ?? '');
 if (empty($input['phone'])) {
-    $errors['phone'][] = 'Phone number is required.';
-} elseif (!preg_match('/^[+]?[0-9\s\-()]{7,30}$/', $input['phone'])) { // Basic phone validation
-    $errors['phone'][] = 'Phone number is not valid.';
+    $errors['phone'][] = 'val_err_phone_required';
+} elseif (!preg_match('/^[+]?[0-9\s\-()]{7,30}$/', $input['phone'])) {
+    $errors['phone'][] = 'val_err_phone_invalid';
 } elseif (strlen($input['phone']) > 30) {
-     $errors['phone'][] = 'Phone number cannot exceed 30 characters.';
+     $errors['phone'][] = 'val_err_phone_maxlength';
 }
 
-// Email
 $input['email'] = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
 if (empty(trim($_POST['email'] ?? ''))) {
-    $errors['email'][] = 'Email is required.';
+    $errors['email'][] = 'val_err_email_required';
 } elseif ($input['email'] === false) {
-    $errors['email'][] = 'Email address is not valid.';
-    $input['email'] = trim($_POST['email'] ?? ''); // Keep original invalid email for re-display
+    $errors['email'][] = 'val_err_email_invalid';
+    $input['email'] = trim($_POST['email'] ?? '');
 } elseif (strlen($input['email']) > 255) {
-    $errors['email'][] = 'Email address cannot exceed 255 characters.';
+    $errors['email'][] = 'val_err_email_maxlength';
 }
 
-
-// Desired Date
 $input['desired_date'] = trim($_POST['desired_date'] ?? '');
 if (empty($input['desired_date'])) {
-    $errors['desired_date'][] = 'Desired flight date is required.';
+    $errors['desired_date'][] = 'val_err_desired_date_required';
 } else {
     $date_obj = DateTime::createFromFormat('Y-m-d', $input['desired_date']);
     if (!$date_obj || $date_obj->format('Y-m-d') !== $input['desired_date']) {
-        $errors['desired_date'][] = 'Desired flight date is not a valid date format (YYYY-MM-DD).';
+        $errors['desired_date'][] = 'val_err_desired_date_invalid';
     } elseif ($date_obj < new DateTime('today')) {
-        $errors['desired_date'][] = 'Desired flight date cannot be in the past.';
+        $errors['desired_date'][] = 'val_err_desired_date_past';
     }
 }
 
-// Other Date Available
 $input['other_date_available'] = isset($_POST['other_date_available']) ? 1 : 0;
-
-// Notes (optional)
 $input['notes_passenger'] = trim($_POST['notes_passenger'] ?? '');
-if (strlen($input['notes_passenger']) > 2000) { // Example limit
-    $errors['notes_passenger'][] = 'Notes cannot exceed 2000 characters.';
+if (strlen($input['notes_passenger']) > 2000) {
+    $errors['notes_passenger'][] = 'val_err_notes_maxlength';
 }
 
-
 if (!empty($errors)) {
-    // Store errors and form data in session and redirect back to form
-    $_SESSION['form_errors'] = $errors;
-    $_SESSION['form_data'] = $_POST; // Send back all POST data
+    $_SESSION['form_errors'] = $errors; // These are now arrays of keys
+    $_SESSION['form_data'] = $_POST;
     redirect(BASE_URL . '/request_flight.php');
 }
 
-// If validation passes, proceed to database interaction and email sending
 $db = new Database();
-
 try {
     $db->beginTransaction();
-
-    // 1. Check if passenger email already exists. If so, use that passenger_id.
+    // ... (database logic as before) ...
     $db->query("SELECT id FROM passengers WHERE email = :email");
     $db->bind(':email', $input['email']);
     $passenger = $db->single();
@@ -125,12 +104,9 @@ try {
 
     if ($passenger) {
         $passenger_id = $passenger['id'];
-        // Optionally: Update passenger details if they changed? For now, just use existing.
-        // $db->query("UPDATE passengers SET first_name = :first_name, last_name = :last_name, age = :age, weight = :weight, phone = :phone WHERE id = :id");
-        // ... bindings ... $db->execute();
     } else {
-        // Insert new passenger
         $db->query("INSERT INTO passengers (first_name, last_name, age, weight, phone, email) VALUES (:first_name, :last_name, :age, :weight, :phone, :email)");
+        // ... bindings ...
         $db->bind(':first_name', $input['first_name']);
         $db->bind(':last_name', $input['last_name']);
         $db->bind(':age', $input['age']);
@@ -142,78 +118,72 @@ try {
     }
 
     if (!$passenger_id) {
-        throw new Exception("Failed to create or retrieve passenger record.");
+        throw new Exception(__('submit_request_passenger_record_fail')); // Use translated key
     }
 
-    // 2. Create Flight Request
-    $confirmation_token = bin2hex(random_bytes(32)); // Generate a secure token
-    $token_expires_at = date('Y-m-d H:i:s', strtotime('+24 hours')); // Token valid for 24 hours
+    $confirmation_token = bin2hex(random_bytes(32));
+    $token_expires_at = date('Y-m-d H:i:s', strtotime('+24 hours'));
 
     $db->query("INSERT INTO flight_requests (passenger_id, desired_date, other_date_available, status, confirmation_token, token_expires_at, notes_passenger)
                 VALUES (:passenger_id, :desired_date, :other_date_available, 'pending_confirmation', :confirmation_token, :token_expires_at, :notes_passenger)");
+    // ... bindings ...
     $db->bind(':passenger_id', $passenger_id);
     $db->bind(':desired_date', $input['desired_date']);
-    $db->bind(':other_date_available', $input['other_date_available'], PDO::PARAM_INT); // Ensure it's treated as int
+    $db->bind(':other_date_available', $input['other_date_available'], PDO::PARAM_INT);
     $db->bind(':confirmation_token', $confirmation_token);
     $db->bind(':token_expires_at', $token_expires_at);
     $db->bind(':notes_passenger', $input['notes_passenger']);
 
     if (!$db->execute()) {
-         throw new Exception("Failed to create flight request. SQL Error: " . ($db->getError() ? $db->getError()['message'] : 'Unknown error'));
+         throw new Exception(__('submit_request_flight_creation_fail_user')); // User-facing translated key
     }
-
     $flight_request_id = $db->lastInsertId();
 
-    // 3. Send Confirmation Email to Passenger
+    // Send Confirmation Email
     $confirmation_link = BASE_URL . "/confirm_request.php?token=" . $confirmation_token;
-    $email_subject = "Confirm Your Flight Request - " . SITE_NAME;
+    // Subject and body now use translation keys
+    $email_subject = __('confirm_email_summary_subject', ['siteName' => __(SITE_NAME_KEY ?? 'site_name', [], SITE_NAME)]);
 
-    // Basic Email Template (Consider using a templating engine or loading from a file for complex emails)
-    $email_body_html = "<p>Dear " . escape_html($input['first_name']) . ",</p>";
-    $email_body_html .= "<p>Thank you for your flight request with " . SITE_NAME . ". Please click the link below to confirm your request:</p>";
+    $email_body_html = "<p>" . __('confirm_email_summary_body_greeting', ['passengerName' => escape_html($input['first_name'])]) . "</p>";
+    $email_body_html .= "<p>" . __('submit_request_email_body_line1_pending', ['siteName' => __(SITE_NAME_KEY ?? 'site_name', [], SITE_NAME)]) . "</p>";
     $email_body_html .= "<p><a href='" . $confirmation_link . "'>" . $confirmation_link . "</a></p>";
-    $email_body_html .= "<p>This link will expire in 24 hours.</p>";
-    $email_body_html .= "<p><strong>Request Details:</strong><br>";
-    $email_body_html .= "Name: " . escape_html($input['first_name']) . " " . escape_html($input['last_name']) . "<br>";
-    $email_body_html .= "Desired Date: " . escape_html($input['desired_date']) . "<br>";
-    // ... add other relevant details ...
+    $email_body_html .= "<p>" . __('submit_request_email_body_line2_token_expiry') . "</p>";
+    $email_body_html .= "<p><strong>" . __('confirm_email_summary_body_request_details_title') . "</strong><br>";
+    $email_body_html .= __('confirm_email_summary_body_passenger_name', ['passengerFullName' => escape_html($input['first_name'] . ' ' . $input['last_name'])]) . "<br>";
+    $email_body_html .= __('confirm_email_summary_body_desired_date', ['desiredDate' => escape_html($input['desired_date'])]) . "<br>";
     $email_body_html .= "</p>";
-    $email_body_html .= "<p>If you did not make this request, please ignore this email.</p>";
-    $email_body_html .= "<p>Best regards,<br>" . SITE_NAME . " Team</p>";
+    $email_body_html .= "<p>" . __('submit_request_email_body_line3_ignore') . "</p>";
+    $email_body_html .= "<p>" . __('confirm_email_summary_body_thank_you') . "<br>" . __('confirm_email_summary_body_team_name', ['siteName' => __(SITE_NAME_KEY ?? 'site_name', [], SITE_NAME)]) . "</p>";
 
     if (!send_application_email($input['email'], $email_subject, $email_body_html)) {
-        // Log email failure but don't necessarily roll back transaction if DB part was successful.
-        // Admin might need to manually confirm or resend.
         error_log("Failed to send confirmation email to " . $input['email'] . " for request ID " . $flight_request_id);
-        // For now, let's inform the user there might be an issue with the email.
-         $_SESSION['user_message'] = "Your request has been submitted! However, there was an issue sending the confirmation email. Please contact support if you don't receive it shortly.";
-         $_SESSION['message_type'] = 'warning';
+        $_SESSION['user_message'] = 'submit_request_confirmation_email_send_fail_warning'; // Key
+        $_SESSION['message_type'] = 'warning';
     } else {
-        $_SESSION['user_message'] = "Thank you, " . escape_html($input['first_name']) . "! Your flight request has been submitted. Please check your email (" . escape_html($input['email']) . ") for a confirmation link to finalize your request.";
+        $_SESSION['user_message'] = 'submit_request_success_pending_confirmation'; // Key
+        $_SESSION['user_message_params'] = ['passengerName' => escape_html($input['first_name']), 'passengerEmail' => escape_html($input['email'])];
         $_SESSION['message_type'] = 'success';
     }
 
     $db->commit();
-
-    redirect(BASE_URL . '/request_flight.php'); // Redirect to form page to show success/warning message
+    redirect(BASE_URL . '/request_flight.php');
 
 } catch (PDOException $e) {
     $db->rollBack();
-    error_log("Database error during flight request: " . $e->getMessage() . " | Input: " . print_r($input, true));
-    $_SESSION['form_errors'] = ['database' => ['A database error occurred: ' . $e->getMessage()]]; // More detailed for dev
-    // $_SESSION['form_errors'] = ['database' => ['A database error occurred while processing your request. Please try again later.']]; // User-friendly
+    error_log("Database error during flight request: " . $e->getMessage());
+    $_SESSION['form_errors'] = ['database_error' => ['submit_request_db_error_user']]; // Key
     $_SESSION['form_data'] = $_POST;
     redirect(BASE_URL . '/request_flight.php');
 } catch (Exception $e) {
-    // Catch other general exceptions
-    if ($db->inTransaction()) { // Check if transaction is active before trying to rollback
-       $db->rollBack();
-    }
-    error_log("General error during flight request: " . $e->getMessage() . " | Input: " . print_r($input, true));
-    $_SESSION['form_errors'] = ['general' => ['An unexpected error occurred: ' . $e->getMessage()]]; // More detailed for dev
-    // $_SESSION['form_errors'] = ['general' => ['An unexpected error occurred. Please try again.']]; // User-friendly
+    if ($db->inTransaction()) { $db->rollBack(); }
+    error_log("General error during flight request: " . $e->getMessage());
+    // If message from exception is a key, use it. Otherwise, use generic.
+    // For Locale::get to work here, Locale class must be loaded.
+    // $message_is_key = Locale::get($e->getMessage(), [], null) !== $e->getMessage(); // Check if it's a known key
+    // $error_key = $message_is_key ? $e->getMessage() : 'submit_request_unexpected_error_user';
+    $error_key = 'submit_request_unexpected_error_user'; // Simpler: use generic key for now
+    $_SESSION['form_errors'] = ['general_error' => [$error_key]]; // Key
     $_SESSION['form_data'] = $_POST;
     redirect(BASE_URL . '/request_flight.php');
 }
-
 ?>

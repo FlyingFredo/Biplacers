@@ -85,73 +85,69 @@ function regenerate_csrf_token() {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+/**
+ * Check if a user is logged in.
+ *
+ * @return bool True if logged in, false otherwise.
+ */
+function is_logged_in() {
+    return isset($_SESSION['user_id']);
+}
+
+/**
+ * Require login for accessing a page. Redirects to login if not logged in.
+ * Optionally checks for a specific user type (role).
+ *
+ * @param string|array|null $required_type The required user type(s) (e.g., 'admin', 'pilot', or ['admin', 'pilot']).
+ *                                       If null, just checks for login.
+ * @return void
+ */
+function require_login($required_type = null) {
+    if (!is_logged_in()) {
+        $_SESSION['user_message'] = 'admin_auth_required_login'; // Key
+        $_SESSION['message_type'] = 'warning';
+        // Store the intended URL to redirect back after login
+        // $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
+        redirect(BASE_URL . '/admin/login.php');
+    }
+
+    if ($required_type) {
+        $user_type = $_SESSION['user_type'] ?? null;
+        $is_authorized = false;
+        if (is_array($required_type)) {
+            if (in_array($user_type, $required_type, true)) {
+                $is_authorized = true;
+            }
+        } else {
+            if ($user_type === $required_type) {
+                $is_authorized = true;
+            }
+        }
+
+        if (!$is_authorized) {
+            $_SESSION['user_message'] = 'admin_auth_required_unauthorized'; // Key
+            $_SESSION['message_type'] = 'danger';
+            // Redirect to a less privileged page or dashboard, or show an error page
+            redirect(BASE_URL . '/admin/dashboard.php'); // Or index.php if dashboard is also restricted
+        }
+    }
+}
+
+/**
+ * Check if the logged-in user is an admin.
+ *
+ * @return bool True if user is admin, false otherwise.
+ */
+function is_admin() {
+    return is_logged_in() && isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin';
+}
+
+/**
+ * Check if the logged-in user is a pilot.
+ * (Could also be an admin, if admins have pilot capabilities)
+ * @return bool True if user is pilot, false otherwise.
+ */
+function is_pilot() {
+    return is_logged_in() && isset($_SESSION['user_type']) && ($_SESSION['user_type'] === 'pilot' || $_SESSION['user_type'] === 'admin');
+}
 ?>
-<?php
-    // ... (existing content of utils.php) ...
-
-    /**
-     * Check if a user is logged in.
-     *
-     * @return bool True if logged in, false otherwise.
-     */
-    function is_logged_in() {
-        return isset($_SESSION['user_id']);
-    }
-
-    /**
-     * Require login for accessing a page. Redirects to login if not logged in.
-     * Optionally checks for a specific user type (role).
-     *
-     * @param string|array|null $required_type The required user type(s) (e.g., 'admin', 'pilot', or ['admin', 'pilot']).
-     *                                       If null, just checks for login.
-     * @return void
-     */
-    function require_login($required_type = null) {
-        if (!is_logged_in()) {
-            $_SESSION['user_message'] = 'You need to log in to access this page.';
-            $_SESSION['message_type'] = 'warning';
-            // Store the intended URL to redirect back after login
-            // $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
-            redirect(BASE_URL . '/admin/login.php');
-        }
-
-        if ($required_type) {
-            $user_type = $_SESSION['user_type'] ?? null;
-            $is_authorized = false;
-            if (is_array($required_type)) {
-                if (in_array($user_type, $required_type, true)) {
-                    $is_authorized = true;
-                }
-            } else {
-                if ($user_type === $required_type) {
-                    $is_authorized = true;
-                }
-            }
-
-            if (!$is_authorized) {
-                $_SESSION['user_message'] = 'You are not authorized to access this page.';
-                $_SESSION['message_type'] = 'danger';
-                // Redirect to a less privileged page or dashboard, or show an error page
-                redirect(BASE_URL . '/admin/dashboard.php'); // Or index.php if dashboard is also restricted
-            }
-        }
-    }
-
-    /**
-     * Check if the logged-in user is an admin.
-     *
-     * @return bool True if user is admin, false otherwise.
-     */
-    function is_admin() {
-        return is_logged_in() && isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin';
-    }
-
-    /**
-     * Check if the logged-in user is a pilot.
-     * (Could also be an admin, if admins have pilot capabilities)
-     * @return bool True if user is pilot, false otherwise.
-     */
-    function is_pilot() {
-        return is_logged_in() && isset($_SESSION['user_type']) && ($_SESSION['user_type'] === 'pilot' || $_SESSION['user_type'] === 'admin');
-    }
-    ?>
