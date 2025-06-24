@@ -17,11 +17,21 @@ define('BASE_URL', 'http://localhost/paragliding_booking/public');
 define('SITE_NAME', 'Paragliding Booking');
 
 // ** DATABASE CONFIGURATION ** //
-// Replace with your actual database credentials.
-define('DB_HOST', 'localhost');         // Your database host (e.g., '127.0.0.1' or 'localhost')
-define('DB_NAME', 'paragliding_db');    // Your database name
-define('DB_USER', 'db_user');           // Your database username
-define('DB_PASS', 'db_password');       // Your database password
+// Database credentials will be read from environment variables if available (for Docker).
+// Otherwise, it falls back to the defined constants (for local/non-Docker setup).
+
+// Fallback values if environment variables are not set
+define('DEFAULT_DB_HOST', 'localhost');
+define('DEFAULT_DB_NAME', 'paragliding_db');
+define('DEFAULT_DB_USER', 'db_user');
+define('DEFAULT_DB_PASS', 'db_password');
+
+// Read from environment variables, with fallbacks
+// In a Docker environment, DB_HOST should typically be the service name (e.g., 'db')
+define('DB_HOST', getenv('DB_HOST') ?: DEFAULT_DB_HOST);
+define('DB_NAME', getenv('DB_NAME') ?: DEFAULT_DB_NAME);
+define('DB_USER', getenv('DB_USER') ?: DEFAULT_DB_USER);
+define('DB_PASS', getenv('DB_PASS') ?: DEFAULT_DB_PASS);
 
 // ** EMAIL CONFIGURATION ** //
 // Used for sending emails from the application (e.g., booking confirmations).
