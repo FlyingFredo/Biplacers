@@ -79,10 +79,10 @@ error_reporting(E_ALL);     // Set to E_ALL & ~E_DEPRECATED & ~E_STRICT in produ
 require_once APP_ROOT . '/src/utils.php';
 
 // Locale functions for internationalization
-require_once APP_ROOT . '/src/Locale.php';
+require_once APP_ROOT . '/src/AppLocale.php';
 
 // Initialize the localization system after defining languages
-Locale::initialize(DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, APP_ROOT . '/locale');
+AppLocale::initialize(DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, APP_ROOT . '/locale');
 
 // Example of how SITE_NAME_KEY might be used with localization, if you prefer dynamic site names.
 // If you define SITE_NAME_KEY, ensure the corresponding key exists in your language files.

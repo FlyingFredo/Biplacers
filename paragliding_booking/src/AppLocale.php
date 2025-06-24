@@ -10,7 +10,7 @@ if (session_status() == PHP_SESSION_NONE && php_sapi_name() !== 'cli') {
     session_start();
 }
 
-class Locale {
+class AppLocale {
     private static $current_language = 'en'; // Default language
     private static $supported_languages = ['en', 'fr', 'es'];
     private static $translations = [];
@@ -119,14 +119,14 @@ class Locale {
     }
 }
 
-// Initialize Locale class with a default language when this file is included.
+// Initialize AppLocale class with a default language when this file is included.
 // The actual default might be set in config.php or a bootstrap file.
-Locale::initialize('en');
+AppLocale::initialize('en');
 
 // Global helper function for convenience (similar to common i18n libraries)
 if (!function_exists('__')) {
     function __($key, $params = [], $default = null) {
-        return Locale::get($key, $params, $default);
+        return AppLocale::get($key, $params, $default);
     }
 }
 ?>
