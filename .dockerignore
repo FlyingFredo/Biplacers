@@ -1,0 +1,21 @@
+# Git files
+.git
+.gitignore
+
+# Docker related files
+Dockerfile
+docker-compose.yml
+
+# IDE and editor specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local development artifacts
+mysql-data/
+vendor/
+
+# OS specific files
+.DS_Store
+Thumbs.db

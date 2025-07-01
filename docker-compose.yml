@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: paragliding_app
+    ports:
+      - "8080:80"
+    volumes:
+      - ./config:/var/www/html/config
+      - ./paragliding_booking:/var/www/html/paragliding_booking
+    environment:
+      - DB_HOST=db
+      - DB_NAME=paragliding_db
+      - DB_USER=db_user
+      - DB_PASS=db_password
+      # Add any other environment variables your app might need from config.php
+      # For example, if you decide to make SITE_NAME configurable:
+      # - SITE_NAME=Paragliding Booking Dockerized
+    depends_on:
+      - db
+    networks:
+      - app_network
+
+  db:
+    image: mysql:8.0
+    container_name: paragliding_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: paragliding_db
+      MYSQL_USER: db_user
+      MYSQL_PASSWORD: db_password
+      MYSQL_ROOT_PASSWORD: root_password # Secure this in a real production environment
+    ports:
+      # Expose MySQL port to host if direct access is needed (e.g., for a GUI client)
+      # Otherwise, it's only accessible within the Docker network by the app service.
+      - "33069:3306" # Host port : Container port (using a non-default host port to avoid conflicts)
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Mount the schema.sql file to initialize the database on first run
+      - ./paragliding_booking/sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - app_network
+
+volumes:
+  mysql_data:
+
+networks:
+  app_network:
+    driver: bridge
