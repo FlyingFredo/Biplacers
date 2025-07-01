@@ -88,4 +88,5 @@ Locale::initialize(DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, APP_ROOT . '/locale');
 // If you define SITE_NAME_KEY, ensure the corresponding key exists in your language files.
 // define('SITE_NAME_KEY', 'site_name_default'); // e.g., 'site_name_default' => "Paragliding Booking System" in en/messages.php
 
+define('CONFIG_LOADED', true);
 ?>
