@@ -1,14 +1,23 @@
 <?php
 // ... (existing header PHP code from previous step) ...
 if (session_status() == PHP_SESSION_NONE && php_sapi_name() !== 'cli') { session_start(); }
-if (!defined('BASE_URL') || !class_exists('Locale')) {
+
+// Check if the config file has already been loaded.
+// This prevents redefining constants and re-declaring classes if header.php is included
+// by a script that has already loaded config.php.
+if (!defined('CONFIG_LOADED')) {
     $config_path = dirname(__DIR__, 2) . '/config/config.php';
-    if(file_exists($config_path)) {
+    if (file_exists($config_path)) {
         require_once $config_path;
     } else {
-        die("Config file not found for header template.");
+        // If config.php is essential and not found, terminate.
+        // This is a fallback for cases where header.php might be included standalone
+        // or by a script that doesn't load config.php first.
+        die("Critical configuration file not found. Ensure config.php is loaded before this header.");
     }
 }
+
+// Proceed with header setup, assuming config (and Locale class) is now available.
 $page_title_key = defined('PAGE_TITLE_KEY') ? PAGE_TITLE_KEY : 'page_title_default';
 $page_title_params = defined('PAGE_TITLE_PARAMS') ? PAGE_TITLE_PARAMS : [];
 $current_lang = Locale::getLanguage();
